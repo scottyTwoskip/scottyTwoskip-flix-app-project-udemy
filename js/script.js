@@ -2,7 +2,7 @@ const globalState = { currentpage: window.location.pathname }
 // console.log(globalState.currentpage)
 
 async function displayPopularMovies() {
-    const results = await fetchAPIData('movies/popular')
+    const results = await fetchAPIData('movie/popular')
     console.log(results)
 }
 
@@ -12,7 +12,7 @@ async function fetchAPIData(endpoint) {
     const API_KEY = '9a72b45c098f6736b49904f23ad34e71'
     const API_URL = 'https://api.themoviedb.org/3/'
 
-    const response = await fetch(`${API_URL}${endpoint}?apki_key=${API_KEY}&language=en-US`)
+    const response = await fetch(`${API_URL}${endpoint}?api_key=${API_KEY}&language=en-US`)
 
     const data = await response.json()
     return data
@@ -34,6 +34,7 @@ function init() {
         case '/':
         case '/index.html':
             console.log('Home')
+            displayPopularMovies()
             break
         case '/shows.html':
             console.log('Shows')
