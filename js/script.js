@@ -4,7 +4,8 @@ const globalState = {
     term: '',
     type: '',
     page: 1,
-    totalPages: 1
+    totalPages: 1,
+    totalResults: 0
   },
   api: {
     apiKey: '9a72b45c098f6736b49904f23ad34e71',
@@ -231,7 +232,7 @@ async function searchAPIData() {
 
   showSpinner()
 
-  const response = await fetch(`${API_URL}search/${globalState.search.type}?api_key=${API_KEY}&language=en-US&query=${globalState.search.term}`)
+  const response = await fetch(`${API_URL}search/${globalState.search.type}?api_key=${API_KEY}&language=en-US&query=${globalState.search.term}&page=${globalState.search.page}`)
 
   const data = await response.json()
   hideSpinner()
@@ -247,13 +248,99 @@ async function search() {
   globalState.search.term = urlParams.get('search-term')
 
   if (globalState.search.term != '' && globalState.search.term != null) {
-    const results = await searchAPIData()
-    console.log(results)
+    const { results, total_pages, page, total_results } = await searchAPIData()
+
+    globalState.search.page = page
+    globalState.search.totalPages = total_pages
+    globalState.search.totalResults = total_results
+
+    if (results.length === 0) {
+      showAlert('No results found!')
+      return
+    }
+    displaySearchResults(results)
+
+    document.querySelector('#search-term').value = ''
   } else {
     showAlert('Please enter a search term!')
   }
 
 }
+
+function displaySearchResults(results) {
+  //clear previous results
+  document.querySelector('#search-results').innerHTML = ''
+  document.querySelector('#search-results-heading').innerHTML = ''
+  document.querySelector('#pagination').innerHTML = ''
+
+  results.forEach(result => {
+    const div = document.createElement('div')
+    div.classList.add('card')
+    div.innerHTML = `
+        <a href="${globalState.search.type}-details.html?id=${result.id}">
+            ${result.poster_path
+        ? `          <img
+            src="https://image.tmdb.org/t/p/w500${result.poster_path}"
+            class="card-img-top"
+            alt="${globalState.search.type === 'movie' ? result.title : result.name}"
+          />` : `          <img
+          src="images/no-image.jpg"
+          class="card-img-top"
+          alt="${globalState.search.type === 'movie' ? result.title : result.name}"
+        />`
+      }
+        </a>
+        <div class="card-body">
+          <h5 class="card-title">${globalState.search.type === 'movie' ? result.title : result.name}</h5>
+          <p class="card-text">
+            <small class="text-muted">Release: ${globalState.search.type === 'movie' ? result.release_date : result.first_air_date}</small>
+          </p>
+        </div>
+`;
+
+    document.querySelector('#search-results-heading').innerHTML = `<h2>${results.length} of ${globalState.search.totalResults}
+    Results for "${globalState.search.term}"</h2>`
+
+    document.querySelector('#search-results').appendChild(div)
+  })
+  displayPagination()
+}
+//create and display pagination for search
+function displayPagination() {
+  const div = document.createElement('div')
+  div.classList.add('pagination')
+  div.innerHTML = `          <button class="btn btn-primary" id="prev">Prev</button>
+  <button class="btn btn-primary" id="next">Next</button>
+  <div class="page-counter">Page ${globalState.search.page} of ${globalState.search.totalPages}</div>`
+
+  document.querySelector('#pagination').appendChild(div)
+
+  //disable prev button if on first page
+  if (globalState.search.page === 1) {
+    document.querySelector('#prev').disabled = true
+  }
+
+  //Disable next button if on last page
+  if (globalState.search.page === globalState.search.totalPages) {
+    document.querySelector('#next').disabled = true
+  }
+
+  // Next page
+  document.querySelector('#next').addEventListener('click', async () => {
+    globalState.search.page++
+    const { results, total_Pages } = await searchAPIData()
+    displaySearchResults(results)
+  })
+
+  // Prev page
+  document.querySelector('#prev').addEventListener('click', async () => {
+    globalState.search.page--
+    const { results, total_Pages } = await searchAPIData()
+    displaySearchResults(results)
+  })
+}
+
+
 //Display slider previews
 async function displaySlider() {
   const { results } = await fetchAPIData('movie/now_playing')
@@ -319,7 +406,7 @@ function highlightActiveLink() {
 }
 
 //show alert 
-function showAlert(message, className) {
+function showAlert(message, className = 'error') {
   const alertEl = document.createElement('div')
   alertEl.classList.add('alert', className)
   alertEl.appendChild(document.createTextNode(message))
